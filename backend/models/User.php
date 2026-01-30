@@ -2,103 +2,85 @@
 
 namespace app\models;
 
-class User extends \yii\base\BaseObject implements \yii\web\IdentityInterface
+use Yii;
+use yii\db\ActiveRecord;
+use yii\web\IdentityInterface;
+
+class User extends ActiveRecord implements IdentityInterface
 {
-    public $id;
-    public $username;
-    public $password;
-    public $authKey;
-    public $accessToken;
+    public static function tableName()
+    {
+        return '{{%users}}';
+    }
 
-    private static $users = [
-        '100' => [
-            'id' => '100',
-            'username' => 'admin',
-            'password' => 'admin',
-            'authKey' => 'test100key',
-            'accessToken' => '100-token',
-        ],
-        '101' => [
-            'id' => '101',
-            'username' => 'demo',
-            'password' => 'demo',
-            'authKey' => 'test101key',
-            'accessToken' => '101-token',
-        ],
-    ];
+    public function rules()
+    {
+        return [
+            [['name', 'email', 'password_hash', 'role', 'created_at', 'updated_at'], 'required'],
+            [['created_at', 'updated_at'], 'integer'],
+            [['company_rating'], 'number'],
+            [['name'], 'string', 'max' => 120],
+            [['email'], 'string', 'max' => 190],
+            [['email'], 'email'],
+            [['email'], 'unique'],
+            [['password_hash'], 'string', 'max' => 255],
+            [['company_name'], 'string', 'max' => 190],
+            ['role', 'in', 'range' => ['user', 'company']],
+        ];
+    }
 
+    public function fields()
+    {
+        return [
+            'id',
+            'name',
+            'email',
+            'role',
+            'company_name',
+            'company_rating',
+            'created_at',
+            'updated_at',
+        ];
+    }
 
-    /**
-     * {@inheritdoc}
-     */
+    public function setPassword(string $password): void
+    {
+        $this->password_hash = Yii::$app->security->generatePasswordHash($password);
+    }
+
+    public function validatePassword(string $password): bool
+    {
+        return Yii::$app->security->validatePassword($password, $this->password_hash);
+    }
+
+    public static function findByEmail(string $email): ?self
+    {
+        return static::findOne(['email' => $email]);
+    }
+
+    // IdentityInterface
     public static function findIdentity($id)
     {
-        return isset(self::$users[$id]) ? new static(self::$users[$id]) : null;
+        return static::findOne(['id' => $id]);
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public static function findIdentityByAccessToken($token, $type = null)
     {
-        foreach (self::$users as $user) {
-            if ($user['accessToken'] === $token) {
-                return new static($user);
-            }
-        }
-
         return null;
     }
 
-    /**
-     * Finds user by username
-     *
-     * @param string $username
-     * @return static|null
-     */
-    public static function findByUsername($username)
-    {
-        foreach (self::$users as $user) {
-            if (strcasecmp($user['username'], $username) === 0) {
-                return new static($user);
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
     public function getId()
     {
         return $this->id;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getAuthKey()
     {
-        return $this->authKey;
+        return null;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function validateAuthKey($authKey)
     {
-        return $this->authKey === $authKey;
-    }
-
-    /**
-     * Validates password
-     *
-     * @param string $password password to validate
-     * @return bool if password provided is valid for current user
-     */
-    public function validatePassword($password)
-    {
-        return $this->password === $password;
+        return false;
     }
 }
