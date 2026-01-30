@@ -13,6 +13,7 @@ use app\models\Request;
 use app\models\User;
 use app\services\NotificationService;
 
+
 class QuotationsController extends Controller
 {
     public function behaviors()
@@ -134,8 +135,10 @@ NotificationService::create(
     'quotation.created',
     'New quotation received',
     'A company submitted a quotation for: ' . $req->title,
-    ['request_id' => (int)$req->id, 'quotation_id' => (int)$q->id]
+    ['request_id' => (int)$req->id, 'quotation_id' => (int)$q->id],
+    'user:' . (int)$req->user_id
 );
+
         return ['quotation' => $q];
     }
 

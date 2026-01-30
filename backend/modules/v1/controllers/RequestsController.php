@@ -17,11 +17,9 @@ class RequestsController extends Controller
     public function behaviors()
     {
         $behaviors = parent::behaviors();
-
         $behaviors['authenticator'] = [
             'class' => JwtAuth::class,
         ];
-
         return $behaviors;
     }
 
@@ -33,7 +31,7 @@ class RequestsController extends Controller
             'view' => ['GET'],
             'update' => ['PATCH'],
             'cancel' => ['POST'],
-            'index' => ['GET'],
+            'index' => ['GET'], // company browse
         ];
     }
 
@@ -45,7 +43,7 @@ class RequestsController extends Controller
         }
     }
 
-    // POST /v1/requests
+    // POST /v1/requests (user)
     public function actionCreate()
     {
         $this->requireRole('user');
@@ -95,29 +93,25 @@ class RequestsController extends Controller
             return ['message' => 'Validation failed', 'errors' => $model->getErrors()];
         }
 
-$subs = CategorySubscription::find()
-    ->where(['category_id' => (int)$model->category_id])
-    ->all();
+        // ✅ Notify subscribed companies (category-based)
+        $subs = CategorySubscription::find()
+            ->where(['category_id' => (int)$model->category_id, 'actor_role' => 'company'])
+            ->all();
 
-foreach ($subs as $sub) {
-    if ($sub->actor_role !== 'company') {
-        continue;
-    }
-
-    NotificationService::create(
-        (int)$sub->actor_id,
-        'request.created',
-        'New request posted',
-        $model->title,
-        ['request_id' => (int)$model->id, 'category_id' => (int)$model->category_id]
-    );
-}
-
+        foreach ($subs as $sub) {
+            NotificationService::create(
+                (int)$sub->actor_id,
+                'request.created',
+                'New request posted',
+                $model->title,
+                ['request_id' => (int)$model->id, 'category_id' => (int)$model->category_id]
+            );
+        }
 
         return ['request' => $model];
     }
 
-    // GET /v1/requests/mine
+    // GET /v1/requests/mine (user)
     public function actionMine()
     {
         $this->requireRole('user');
@@ -154,7 +148,7 @@ foreach ($subs as $sub) {
         return ['request' => $model];
     }
 
-    // PATCH /v1/requests/{id}
+    // PATCH /v1/requests/{id} (user)
     public function actionUpdate($id)
     {
         $this->requireRole('user');
@@ -205,7 +199,7 @@ foreach ($subs as $sub) {
         return ['request' => $model];
     }
 
-    // POST /v1/requests/{id}/cancel
+    // POST /v1/requests/{id}/cancel (user)
     public function actionCancel($id)
     {
         $this->requireRole('user');
@@ -228,22 +222,39 @@ foreach ($subs as $sub) {
         return ['request' => $model];
     }
 
-    // GET /v1/requests  (company browsing)
+    // ✅ GET /v1/requests (company browse - FILTERED by subscriptions)
     public function actionIndex()
     {
         $this->requireRole('company');
 
+        $companyId = (int)Yii::$app->user->id;
         $now = time();
+
+        // Get subscribed category IDs for this company
+        $categoryIds = CategorySubscription::find()
+            ->select('category_id')
+            ->where(['actor_id' => $companyId, 'actor_role' => 'company'])
+            ->column();
+
+        // No subscriptions => return empty (clean)
+        if (empty($categoryIds)) {
+            return ['requests' => []];
+        }
 
         $query = Request::find()
             ->where(['status' => 'open'])
             ->andWhere(['>', 'expires_at', $now])
+            ->andWhere(['category_id' => $categoryIds])
             ->orderBy(['created_at' => SORT_DESC]);
 
-        // Optional filter by category_id
-        $categoryId = (int)Yii::$app->request->get('category_id', 0);
-        if ($categoryId > 0) {
-            $query->andWhere(['category_id' => $categoryId]);
+        // Optional: allow filtering to one category (must be subscribed)
+        $filterCategoryId = (int)Yii::$app->request->get('category_id', 0);
+        if ($filterCategoryId > 0) {
+            if (!in_array($filterCategoryId, $categoryIds, true)) {
+                // not subscribed to this category => empty
+                return ['requests' => []];
+            }
+            $query->andWhere(['category_id' => $filterCategoryId]);
         }
 
         return ['requests' => $query->all()];
