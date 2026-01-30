@@ -87,15 +87,18 @@ $config = [
             'rules' => [
           
                 [
-                    'class' => 'yii\rest\UrlRule',
-                    'controller' => [
-                        'v1/auth',
-                        'v1/requests',
-                        'v1/categories',
-                        'v1/subscriptions',
-                    ],
+                   'class' => 'yii\rest\UrlRule',
+            'controller' => [
+                'v1/auth',
+                'v1/requests',
+                'v1/quotations',
+                'v1/categories',
+                'v1/subscriptions',
+                'v1/notifications',
+            ],
+            'pluralize' => true,
                 ],
-
+                 'POST v1/notifications/<id:\d+>/read' => 'v1/notifications/read',
                 [
                     'class' => 'yii\rest\UrlRule',
                     'controller' => ['v1/quotations'],

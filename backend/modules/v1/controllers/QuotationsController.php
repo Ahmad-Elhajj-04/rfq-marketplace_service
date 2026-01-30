@@ -11,6 +11,7 @@ use app\components\JwtAuth;
 use app\models\Quotation;
 use app\models\Request;
 use app\models\User;
+use app\services\NotificationService;
 
 class QuotationsController extends Controller
 {
@@ -128,7 +129,13 @@ class QuotationsController extends Controller
             return ['message' => 'Validation failed', 'errors' => $q->getErrors()];
         }
 
-        // TODO later: insert notification + websocket emit to request owner
+NotificationService::create(
+    (int)$req->user_id,
+    'quotation.created',
+    'New quotation received',
+    'A company submitted a quotation for: ' . $req->title,
+    ['request_id' => (int)$req->id, 'quotation_id' => (int)$q->id]
+);
         return ['quotation' => $q];
     }
 

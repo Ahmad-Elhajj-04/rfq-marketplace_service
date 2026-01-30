@@ -9,6 +9,8 @@ use yii\web\ForbiddenHttpException;
 use yii\web\NotFoundHttpException;
 use app\components\JwtAuth;
 use app\models\Request;
+use app\models\CategorySubscription;
+use app\services\NotificationService;
 
 class RequestsController extends Controller
 {
@@ -31,7 +33,7 @@ class RequestsController extends Controller
             'view' => ['GET'],
             'update' => ['PATCH'],
             'cancel' => ['POST'],
-            'index' => ['GET'], // company browse
+            'index' => ['GET'],
         ];
     }
 
@@ -69,7 +71,7 @@ class RequestsController extends Controller
         $model->budget_min = $body['budget_min'] ?? null;
         $model->budget_max = $body['budget_max'] ?? null;
 
-        // expires_at can be ISO string or unix timestamp from client. We'll accept both.
+        // expires_at can be ISO string or unix timestamp
         $expires = $body['expires_at'] ?? null;
         if (is_string($expires)) {
             $ts = strtotime($expires);
@@ -81,7 +83,7 @@ class RequestsController extends Controller
             $model->expires_at = (int)$expires;
         }
 
-        if ($model->expires_at <= $now) {
+        if ((int)$model->expires_at <= $now) {
             throw new BadRequestHttpException('expires_at must be in the future.');
         }
 
@@ -92,6 +94,25 @@ class RequestsController extends Controller
         if (!$model->save()) {
             return ['message' => 'Validation failed', 'errors' => $model->getErrors()];
         }
+
+$subs = CategorySubscription::find()
+    ->where(['category_id' => (int)$model->category_id])
+    ->all();
+
+foreach ($subs as $sub) {
+    if ($sub->actor_role !== 'company') {
+        continue;
+    }
+
+    NotificationService::create(
+        (int)$sub->actor_id,
+        'request.created',
+        'New request posted',
+        $model->title,
+        ['request_id' => (int)$model->id, 'category_id' => (int)$model->category_id]
+    );
+}
+
 
         return ['request' => $model];
     }
@@ -113,18 +134,19 @@ class RequestsController extends Controller
     public function actionView($id)
     {
         $identity = Yii::$app->user->identity;
+
         $model = Request::findOne((int)$id);
         if (!$model) {
             throw new NotFoundHttpException('Request not found.');
         }
 
-        // User can view their own; Company can view open (and not expired)
+        // User can view their own; Company can view open + not expired
         if ($identity->role === 'user') {
             if ((int)$model->user_id !== (int)$identity->id) {
                 throw new ForbiddenHttpException('Forbidden.');
             }
         } else { // company
-            if ($model->status !== 'open' || $model->expires_at < time()) {
+            if ($model->status !== 'open' || (int)$model->expires_at < time()) {
                 throw new ForbiddenHttpException('Request is not available.');
             }
         }
@@ -150,7 +172,6 @@ class RequestsController extends Controller
 
         $body = Yii::$app->request->bodyParams;
 
-        // Allow updating only certain fields
         $allowed = [
             'title', 'description', 'quantity', 'unit',
             'delivery_city', 'delivery_lat', 'delivery_lng',
@@ -171,7 +192,7 @@ class RequestsController extends Controller
             $model->expires_at = $ts;
         }
 
-        if ($model->expires_at <= time()) {
+        if ((int)$model->expires_at <= time()) {
             throw new BadRequestHttpException('expires_at must be in the future.');
         }
 
@@ -225,7 +246,6 @@ class RequestsController extends Controller
             $query->andWhere(['category_id' => $categoryId]);
         }
 
-        $rows = $query->all();
-        return ['requests' => $rows];
+        return ['requests' => $query->all()];
     }
 }
