@@ -14,7 +14,7 @@ $config = [
         '@npm'   => '@vendor/npm-asset',
     ],
 
-
+   
     'modules' => [
         'v1' => [
             'class' => \app\modules\v1\Module::class,
@@ -33,7 +33,7 @@ $config = [
     ],
 
     'components' => [
-        // ✅ Parse JSON
+
         'request' => [
             'cookieValidationKey' => 'oXfPHProvgQiUo-mUmovZF0lZ_TL3sV_',
             'parsers' => [
@@ -41,20 +41,24 @@ $config = [
             ],
         ],
 
-
+      
         'response' => [
             'format' => yii\web\Response::FORMAT_JSON,
         ],
 
+     
         'cache' => [
             'class' => 'yii\caching\FileCache',
         ],
 
+       
         'user' => [
             'identityClass' => app\models\User::class,
             'enableSession' => false,
             'loginUrl' => null,
         ],
+
+       
         'jwt' => [
             'class' => \sizeg\jwt\Jwt::class,
             'key' => $params['jwtSecret'],
@@ -76,28 +80,30 @@ $config = [
                 [
                     'class' => 'yii\log\FileTarget',
                     'levels' => ['error', 'warning'],
-                  
                 ],
             ],
         ],
 
         'db' => $db,
 
-        
+     
         'urlManager' => [
             'enablePrettyUrl' => true,
             'showScriptName' => false,
             'rules' => [
-              ['class' => 'yii\rest\UrlRule', 'controller' => [
-  'v1/auth',
-  'v1/requests',
-]],
-
+                [
+                    'class' => 'yii\rest\UrlRule',
+                    'controller' => [
+                        'v1/auth',
+                        'v1/requests',
+                        'v1/categories',
+                        'v1/subscriptions',
+                    ],
+                ],
             ],
         ],
     ],
 
- 
     'params' => $params,
 ];
 
@@ -111,7 +117,7 @@ if (YII_ENV_DEV) {
     $config['bootstrap'][] = 'gii';
     $config['modules']['gii'] = [
         'class' => 'yii\gii\Module',
-       
+        //'allowedIPs' => ['127.0.0.1', '::1'],
     ];
 }
 
