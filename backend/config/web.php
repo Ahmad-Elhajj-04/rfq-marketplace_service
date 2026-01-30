@@ -14,13 +14,13 @@ $config = [
         '@npm'   => '@vendor/npm-asset',
     ],
 
-   
     'modules' => [
         'v1' => [
             'class' => \app\modules\v1\Module::class,
         ],
     ],
 
+    
     'as cors' => [
         'class' => Cors::class,
         'cors' => [
@@ -41,24 +41,19 @@ $config = [
             ],
         ],
 
-      
         'response' => [
             'format' => yii\web\Response::FORMAT_JSON,
         ],
 
-     
         'cache' => [
             'class' => 'yii\caching\FileCache',
         ],
 
-       
         'user' => [
             'identityClass' => app\models\User::class,
             'enableSession' => false,
             'loginUrl' => null,
         ],
-
-       
         'jwt' => [
             'class' => \sizeg\jwt\Jwt::class,
             'key' => $params['jwtSecret'],
@@ -86,11 +81,11 @@ $config = [
 
         'db' => $db,
 
-     
-        'urlManager' => [
+            'urlManager' => [
             'enablePrettyUrl' => true,
             'showScriptName' => false,
             'rules' => [
+          
                 [
                     'class' => 'yii\rest\UrlRule',
                     'controller' => [
@@ -98,6 +93,19 @@ $config = [
                         'v1/requests',
                         'v1/categories',
                         'v1/subscriptions',
+                    ],
+                ],
+
+                [
+                    'class' => 'yii\rest\UrlRule',
+                    'controller' => ['v1/quotations'],
+                    'pluralize' => false,
+                    'extraPatterns' => [
+                        'GET mine' => 'mine',
+                        'GET by-request' => 'by-request',
+                        'POST {id}/withdraw' => 'withdraw',
+                        'POST {id}/accept' => 'accept',
+                        'POST {id}/reject' => 'reject',
                     ],
                 ],
             ],
@@ -111,13 +119,13 @@ if (YII_ENV_DEV) {
     $config['bootstrap'][] = 'debug';
     $config['modules']['debug'] = [
         'class' => 'yii\debug\Module',
-        //'allowedIPs' => ['127.0.0.1', '::1'],
+       
     ];
 
     $config['bootstrap'][] = 'gii';
     $config['modules']['gii'] = [
         'class' => 'yii\gii\Module',
-        //'allowedIPs' => ['127.0.0.1', '::1'],
+       
     ];
 }
 
