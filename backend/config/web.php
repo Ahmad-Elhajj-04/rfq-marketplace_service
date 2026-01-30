@@ -88,9 +88,11 @@ $config = [
             'enablePrettyUrl' => true,
             'showScriptName' => false,
             'rules' => [
-                ['class' => 'yii\rest\UrlRule', 'controller' => [
-                    'v1/auth',
-                ]],
+              ['class' => 'yii\rest\UrlRule', 'controller' => [
+  'v1/auth',
+  'v1/requests',
+]],
+
             ],
         ],
     ],
