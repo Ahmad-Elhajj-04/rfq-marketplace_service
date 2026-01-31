@@ -1,0 +1,8 @@
+{
+  "token_hmac_secret_key": "CHANGE_ME",
+  "api_key": "CHANGE_ME",
+  "allowed_origins": ["*"],
+  "admin": true,
+  "admin_password": "CHANGE_ME",
+  "admin_secret": "CHANGE_ME"
+}

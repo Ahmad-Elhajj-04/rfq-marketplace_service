@@ -31,7 +31,7 @@ class RequestsController extends Controller
             'view' => ['GET'],
             'update' => ['PATCH'],
             'cancel' => ['POST'],
-            'index' => ['GET'], // company browse
+            'index' => ['GET'],
         ];
     }
 
@@ -43,7 +43,7 @@ class RequestsController extends Controller
         }
     }
 
-    // POST /v1/requests (user)
+    // POST /v1/requests (USER)
     public function actionCreate()
     {
         $this->requireRole('user');
@@ -69,7 +69,7 @@ class RequestsController extends Controller
         $model->budget_min = $body['budget_min'] ?? null;
         $model->budget_max = $body['budget_max'] ?? null;
 
-        // expires_at can be ISO string or unix timestamp
+        // expires_at can be datetime string or unix timestamp
         $expires = $body['expires_at'] ?? null;
         if (is_string($expires)) {
             $ts = strtotime($expires);
@@ -93,27 +93,26 @@ class RequestsController extends Controller
             return ['message' => 'Validation failed', 'errors' => $model->getErrors()];
         }
 
-        // ✅ Notify subscribed companies (category-based)
+        // ✅ Notify subscribed companies (DB + WS broadcast to category channel)
         $subs = CategorySubscription::find()
             ->where(['category_id' => (int)$model->category_id, 'actor_role' => 'company'])
             ->all();
 
         foreach ($subs as $sub) {
             NotificationService::create(
-    (int)$sub->actor_id,
-    'request.created',
-    'New request posted',
-    $model->title,
-    ['request_id' => (int)$model->id, 'category_id' => (int)$model->category_id],
-    'category:' . (int)$model->category_id
-);
-
+                (int)$sub->actor_id,
+                'request.created',
+                'New request posted',
+                $model->title,
+                ['request_id' => (int)$model->id, 'category_id' => (int)$model->category_id],
+                'category:' . (int)$model->category_id
+            );
         }
 
         return ['request' => $model];
     }
 
-    // GET /v1/requests/mine (user)
+    // GET /v1/requests/mine (USER)
     public function actionMine()
     {
         $this->requireRole('user');
@@ -136,7 +135,7 @@ class RequestsController extends Controller
             throw new NotFoundHttpException('Request not found.');
         }
 
-        // User can view their own; Company can view open + not expired
+        // user can view own, company can view open not expired
         if ($identity->role === 'user') {
             if ((int)$model->user_id !== (int)$identity->id) {
                 throw new ForbiddenHttpException('Forbidden.');
@@ -150,7 +149,7 @@ class RequestsController extends Controller
         return ['request' => $model];
     }
 
-    // PATCH /v1/requests/{id} (user)
+    // PATCH /v1/requests/{id} (USER)
     public function actionUpdate($id)
     {
         $this->requireRole('user');
@@ -201,7 +200,7 @@ class RequestsController extends Controller
         return ['request' => $model];
     }
 
-    // POST /v1/requests/{id}/cancel (user)
+    // POST /v1/requests/{id}/cancel (USER)
     public function actionCancel($id)
     {
         $this->requireRole('user');
@@ -224,7 +223,7 @@ class RequestsController extends Controller
         return ['request' => $model];
     }
 
-    // ✅ GET /v1/requests (company browse - FILTERED by subscriptions)
+    // GET /v1/requests (COMPANY browse, filtered by subscriptions)
     public function actionIndex()
     {
         $this->requireRole('company');
@@ -232,13 +231,11 @@ class RequestsController extends Controller
         $companyId = (int)Yii::$app->user->id;
         $now = time();
 
-        // Get subscribed category IDs for this company
         $categoryIds = CategorySubscription::find()
             ->select('category_id')
             ->where(['actor_id' => $companyId, 'actor_role' => 'company'])
             ->column();
 
-        // No subscriptions => return empty (clean)
         if (empty($categoryIds)) {
             return ['requests' => []];
         }
@@ -249,11 +246,10 @@ class RequestsController extends Controller
             ->andWhere(['category_id' => $categoryIds])
             ->orderBy(['created_at' => SORT_DESC]);
 
-        // Optional: allow filtering to one category (must be subscribed)
+        // optional filter by one category
         $filterCategoryId = (int)Yii::$app->request->get('category_id', 0);
         if ($filterCategoryId > 0) {
             if (!in_array($filterCategoryId, $categoryIds, true)) {
-                // not subscribed to this category => empty
                 return ['requests' => []];
             }
             $query->andWhere(['category_id' => $filterCategoryId]);

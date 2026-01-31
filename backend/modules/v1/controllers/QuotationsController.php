@@ -10,9 +10,7 @@ use yii\web\NotFoundHttpException;
 use app\components\JwtAuth;
 use app\models\Quotation;
 use app\models\Request;
-use app\models\User;
 use app\services\NotificationService;
-
 
 class QuotationsController extends Controller
 {
@@ -28,13 +26,13 @@ class QuotationsController extends Controller
     public function verbs()
     {
         return [
-            'create' => ['POST'],                 // POST /v1/quotations
-            'mine' => ['GET'],                    // GET /v1/quotations/mine
-            'by-request' => ['GET'],              // GET /v1/quotations/by-request?request_id=123
-            'update' => ['PATCH'],                // PATCH /v1/quotations/{id}
-            'withdraw' => ['POST'],               // POST /v1/quotations/{id}/withdraw
-            'accept' => ['POST'],                 // POST /v1/quotations/{id}/accept
-            'reject' => ['POST'],                 // POST /v1/quotations/{id}/reject
+            'create' => ['POST'],
+            'mine' => ['GET'],
+            'by-request' => ['GET'],
+            'update' => ['PATCH'],
+            'withdraw' => ['POST'],
+            'accept' => ['POST'],
+            'reject' => ['POST'],
         ];
     }
 
@@ -64,11 +62,7 @@ class QuotationsController extends Controller
         return $q;
     }
 
-    // -------------------------
-    // Company: submit quotation
-    // POST /v1/quotations
-    // body: { request_id, price_per_unit, total_price, delivery_days, delivery_cost, payment_terms, notes?, valid_until }
-    // -------------------------
+    // POST /v1/quotations (COMPANY)
     public function actionCreate()
     {
         $this->requireRole('company');
@@ -81,24 +75,25 @@ class QuotationsController extends Controller
 
         $req = $this->loadRequestOr404($requestId);
 
-        // only open + not expired
         if ($req->status !== 'open' || (int)$req->expires_at <= time()) {
             throw new BadRequestHttpException('Request is not available for quotations.');
         }
 
         $companyId = (int)Yii::$app->user->id;
 
-        // one quotation per (request, company)
-        $existing = Quotation::find()->where(['request_id' => $requestId, 'company_id' => $companyId])->one();
+        $existing = Quotation::find()
+            ->where(['request_id' => $requestId, 'company_id' => $companyId])
+            ->one();
+
         if ($existing && !in_array($existing->status, ['withdrawn'], true)) {
             throw new BadRequestHttpException('You already submitted a quotation for this request.');
         }
 
         $now = time();
         $q = $existing ?: new Quotation();
+
         $q->request_id = $requestId;
         $q->company_id = $companyId;
-
         $q->price_per_unit = $body['price_per_unit'] ?? null;
         $q->total_price = $body['total_price'] ?? null;
         $q->delivery_days = $body['delivery_days'] ?? null;
@@ -106,7 +101,6 @@ class QuotationsController extends Controller
         $q->payment_terms = trim((string)($body['payment_terms'] ?? ''));
         $q->notes = $body['notes'] ?? null;
 
-        // accept valid_until as datetime string or timestamp
         $validUntil = $body['valid_until'] ?? null;
         if (is_string($validUntil)) {
             $ts = strtotime($validUntil);
@@ -130,21 +124,20 @@ class QuotationsController extends Controller
             return ['message' => 'Validation failed', 'errors' => $q->getErrors()];
         }
 
-// Notify winning company
-NotificationService::create(
-    (int)$q->company_id,
-    'quotation.accepted',
-    'Your quotation was accepted',
-    'You won the request: ' . $req->title,
-    ['request_id' => (int)$req->id, 'quotation_id' => (int)$q->id]
-);
+        // ✅ Notify request owner (DB + WS broadcast to user channel)
+        NotificationService::create(
+            (int)$req->user_id,
+            'quotation.created',
+            'New quotation received',
+            'A company submitted a quotation for: ' . $req->title,
+            ['request_id' => (int)$req->id, 'quotation_id' => (int)$q->id],
+            'user:' . (int)$req->user_id
+        );
+
         return ['quotation' => $q];
     }
 
-    // -------------------------
-    // Company: my quotations
-    // GET /v1/quotations/mine
-    // -------------------------
+    // GET /v1/quotations/mine (COMPANY)
     public function actionMine()
     {
         $this->requireRole('company');
@@ -157,38 +150,33 @@ NotificationService::create(
         return ['quotations' => $rows];
     }
 
+    // GET /v1/quotations/by-request?request_id=123 (USER)
+    public function actionByRequest()
+    {
+        $this->requireRole('user');
 
-   public function actionByRequest($request_id)
-{
-    $user = Yii::$app->user->identity;
+        $requestId = (int)Yii::$app->request->get('request_id', 0);
+        if ($requestId <= 0) {
+            throw new BadRequestHttpException('request_id is required.');
+        }
 
-    $request = Request::findOne($request_id);
-    if (!$request) {
-        throw new NotFoundHttpException('Request not found.');
+        $req = $this->loadRequestOr404($requestId);
+
+        if ((int)$req->user_id !== (int)Yii::$app->user->id) {
+            throw new ForbiddenHttpException('Forbidden.');
+        }
+
+        $quotes = Quotation::find()
+            ->where(['request_id' => $requestId])
+            ->andWhere(['not in', 'status', ['withdrawn']])
+            ->all();
+
+        return [
+            'quotations' => $quotes,
+        ];
     }
 
-    //  USER: must own the request
-    if ($user->role === 'user' && $request->user_id !== $user->id) {
-        throw new ForbiddenHttpException();
-    }
-
-    //  COMPANY: allowed
-    if ($user->role !== 'user' && $user->role !== 'company') {
-        throw new ForbiddenHttpException();
-    }
-
-    $query = Quotation::find()
-        ->where(['request_id' => $request_id]);
-
-    // Company sees only their own quotation
-    if ($user->role === 'company') {
-        $query->andWhere(['company_id' => $user->id]);
-    }
-
-    return [
-        'quotations' => $query->all(),
-    ];
-}
+    // PATCH /v1/quotations/{id} (COMPANY)
     public function actionUpdate($id)
     {
         $this->requireRole('company');
@@ -205,7 +193,6 @@ NotificationService::create(
         $body = Yii::$app->request->bodyParams;
 
         $allowed = ['price_per_unit', 'total_price', 'delivery_days', 'delivery_cost', 'payment_terms', 'notes', 'valid_until'];
-
         foreach ($allowed as $field) {
             if (array_key_exists($field, $body)) {
                 $q->$field = $body[$field];
@@ -231,14 +218,10 @@ NotificationService::create(
             return ['message' => 'Validation failed', 'errors' => $q->getErrors()];
         }
 
-        // TODO later: notify user + websocket event
         return ['quotation' => $q];
     }
 
-    // -------------------------
-    // Company: withdraw quotation
-    // POST /v1/quotations/{id}/withdraw
-    // -------------------------
+    // POST /v1/quotations/{id}/withdraw (COMPANY)
     public function actionWithdraw($id)
     {
         $this->requireRole('company');
@@ -256,14 +239,10 @@ NotificationService::create(
         $q->updated_at = time();
         $q->save(false, ['status', 'updated_at']);
 
-        // TODO later: notify user + websocket event
         return ['message' => 'Withdrawn', 'quotation' => $q];
     }
 
-    // -------------------------
-    // User: accept quotation (award request)
-    // POST /v1/quotations/{id}/accept
-    // -------------------------
+    // POST /v1/quotations/{id}/accept (USER)
     public function actionAccept($id)
     {
         $this->requireRole('user');
@@ -277,27 +256,23 @@ NotificationService::create(
         if ($req->status !== 'open') {
             throw new BadRequestHttpException('Request is not open.');
         }
-        if (in_array($q->status, ['withdrawn'], true)) {
+        if ($q->status === 'withdrawn') {
             throw new BadRequestHttpException('Cannot accept a withdrawn quotation.');
         }
 
         $now = time();
 
-        // transaction for consistency
         $tx = Yii::$app->db->beginTransaction();
         try {
-            // accept this quotation
             $q->status = 'accepted';
             $q->updated_at = $now;
             $q->save(false, ['status', 'updated_at']);
 
-            // reject others
             Quotation::updateAll(
                 ['status' => 'rejected', 'updated_at' => $now],
                 ['and', ['request_id' => (int)$req->id], ['not', ['id' => (int)$q->id]], ['not in', 'status', ['withdrawn']]]
             );
 
-            // award request
             $req->status = 'awarded';
             $req->awarded_quotation_id = (int)$q->id;
             $req->updated_at = $now;
@@ -309,14 +284,20 @@ NotificationService::create(
             throw $e;
         }
 
-        // TODO later: notify company + websocket event + notification row
+        // ✅ Notify winning company (DB + WS broadcast to user channel)
+        NotificationService::create(
+            (int)$q->company_id,
+            'quotation.accepted',
+            'Your quotation was accepted',
+            'You won the request: ' . $req->title,
+            ['request_id' => (int)$req->id, 'quotation_id' => (int)$q->id],
+            'user:' . (int)$q->company_id
+        );
+
         return ['message' => 'Awarded', 'request' => $req, 'accepted_quotation' => $q];
     }
 
-    // -------------------------
-    // User: reject one quotation (optional)
-    // POST /v1/quotations/{id}/reject
-    // -------------------------
+    // POST /v1/quotations/{id}/reject (USER)
     public function actionReject($id)
     {
         $this->requireRole('user');
@@ -339,52 +320,5 @@ NotificationService::create(
         $q->save(false, ['status', 'updated_at']);
 
         return ['message' => 'Rejected', 'quotation' => $q];
-    }
-
-    // -------------------------
-    // Smart sorting (simple + explainable)
-    // price weight 0.6, delivery weight 0.4
-    // -------------------------
-    private function sortQuotationsSmart(array $quotes): array
-    {
-        if (empty($quotes)) {
-            return [];
-        }
-
-        $minPrice = null;
-        $minDelivery = null;
-
-        foreach ($quotes as $q) {
-            $price = (float)$q->total_price;
-            $delivery = (int)$q->delivery_days;
-
-            $minPrice = $minPrice === null ? $price : min($minPrice, $price);
-            $minDelivery = $minDelivery === null ? $delivery : min($minDelivery, $delivery);
-        }
-
-        $minPrice = max($minPrice, 0.01);
-        $minDelivery = max($minDelivery, 1);
-
-        $scored = [];
-        foreach ($quotes as $q) {
-            $price = max((float)$q->total_price, 0.01);
-            $delivery = max((int)$q->delivery_days, 1);
-
-            $priceScore = $minPrice / $price;
-            $deliveryScore = $minDelivery / $delivery;
-
-            $score = (0.6 * $priceScore) + (0.4 * $deliveryScore);
-
-            $item = $q->toArray();
-            $item['score'] = round($score, 6);
-
-            $scored[] = $item;
-        }
-
-        usort($scored, function ($a, $b) {
-            return $b['score'] <=> $a['score'];
-        });
-
-        return $scored;
     }
 }
