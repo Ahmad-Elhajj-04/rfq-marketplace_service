@@ -100,12 +100,14 @@ class RequestsController extends Controller
 
         foreach ($subs as $sub) {
             NotificationService::create(
-                (int)$sub->actor_id,
-                'request.created',
-                'New request posted',
-                $model->title,
-                ['request_id' => (int)$model->id, 'category_id' => (int)$model->category_id]
-            );
+    (int)$sub->actor_id,
+    'request.created',
+    'New request posted',
+    $model->title,
+    ['request_id' => (int)$model->id, 'category_id' => (int)$model->category_id],
+    'category:' . (int)$model->category_id
+);
+
         }
 
         return ['request' => $model];

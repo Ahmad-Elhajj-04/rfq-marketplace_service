@@ -81,38 +81,51 @@ $config = [
 
         'db' => $db,
 
-            'urlManager' => [
-            'enablePrettyUrl' => true,
-            'showScriptName' => false,
-            'rules' => [
-          
-                [
-                   'class' => 'yii\rest\UrlRule',
-            'controller' => [
-                'v1/auth',
-                'v1/requests',
-                'v1/quotations',
-                'v1/categories',
-                'v1/subscriptions',
-                'v1/notifications',
-            ],
-            'pluralize' => true,
-                ],
-                 'POST v1/notifications/<id:\d+>/read' => 'v1/notifications/read',
-                [
-                    'class' => 'yii\rest\UrlRule',
-                    'controller' => ['v1/quotations'],
-                    'pluralize' => false,
-                    'extraPatterns' => [
-                        'GET mine' => 'mine',
-                        'GET by-request' => 'by-request',
-                        'POST {id}/withdraw' => 'withdraw',
-                        'POST {id}/accept' => 'accept',
-                        'POST {id}/reject' => 'reject',
-                    ],
-                ],
+'urlManager' => [
+    'enablePrettyUrl' => true,
+    'showScriptName' => false,
+    'rules' => [
+        // Optional but helpful for Postman/browser preflight
+        'OPTIONS <route:.+>' => 'site/options',
+
+        // Default REST controllers (no custom actions)
+[
+  'class' => 'yii\rest\UrlRule',
+  'controller' => [
+    'v1/auth',
+    'v1/requests',
+    'v1/categories',
+    'v1/subscriptions',
+    'v1/notifications',
+  ],
+],
+
+        // Requests: add custom route for cancel
+        [
+            'class' => 'yii\rest\UrlRule',
+            'controller' => ['v1/requests'],
+            'pluralize' => false,
+            'extraPatterns' => [
+                'GET mine' => 'mine',
+                'POST {id}/cancel' => 'cancel',
             ],
         ],
+
+        // Quotations: custom routes
+        [
+            'class' => 'yii\rest\UrlRule',
+            'controller' => ['v1/quotations'],
+            'pluralize' => false,
+            'extraPatterns' => [
+                'GET mine' => 'mine',
+                'GET by-request' => 'by-request',
+                'POST {id}/withdraw' => 'withdraw',
+                'POST {id}/accept' => 'accept',
+                'POST {id}/reject' => 'reject',
+            ],
+        ],
+    ],
+],
     ],
 
     'params' => $params,

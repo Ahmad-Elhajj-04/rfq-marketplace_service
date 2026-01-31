@@ -19,15 +19,11 @@ class NotificationService
         $n->type = $type;
         $n->title = $title;
         $n->body = $body;
-
-        // works even if DB column is JSON or TEXT
         $n->data_json = empty($data) ? null : json_encode($data, JSON_UNESCAPED_UNICODE);
-
         $n->is_read = 0;
         $n->created_at = time();
         $n->save(false);
 
-        // Realtime broadcast (optional)
         if ($broadcastChannel) {
             WsPublisher::publish($broadcastChannel, [
                 'id' => (int)$n->id,

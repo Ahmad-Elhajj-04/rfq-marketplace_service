@@ -1,0 +1,994 @@
+{
+  "info": {
+    "name": "RFQ Marketplace API",
+    "description": "Complete API collection for the RFQ (Request for Quotation) Marketplace platform. This API enables users to create RFQs and companies to submit quotations.\n\n**Framework:** Yii2 PHP Framework\n**Authentication:** JWT Bearer Token\n**Base URL:** {{base_url}}/v1\n\n**Roles:**\n- **User:** Can create RFQs, view quotations, accept/reject quotations\n- **Company:** Can browse RFQs, submit quotations, manage subscriptions\n\n**Getting Started:**\n1. Register an account (user or company)\n2. Login to receive JWT token\n3. Set the `jwt_token` variable with your token\n4. Start making authenticated requests",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{jwt_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "jwt_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "description": "User registration, login, and profile management. Register and login endpoints do not require authentication.",
+      "item": [
+        {
+          "name": "Register User",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"password\": \"password123\",\n  \"role\": \"user\"\n}"
+            },
+            "url": "{{base_url}}/v1/auths/register",
+            "description": "Register a new user or company account"
+          },
+          "response": [
+            {
+              "name": "Register as User",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"password\": \"password123\",\n  \"role\": \"user\"\n}"
+                },
+                "url": "{{base_url}}/v1/auths/register"
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "cookie": [],
+              "body": "{\n  \"id\": 1,\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"role\": \"user\",\n  \"token\": \"eyJ0eXAiOiJKV1QiLCJhbGc...\"\n}"
+            },
+            {
+              "name": "Register as Company",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Jane Smith\",\n  \"email\": \"jane@company.com\",\n  \"password\": \"password123\",\n  \"role\": \"company\",\n  \"company_name\": \"ABC Suppliers Ltd\"\n}"
+                },
+                "url": "{{base_url}}/v1/auths/register"
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "cookie": [],
+              "body": "{\n  \"id\": 2,\n  \"name\": \"Jane Smith\",\n  \"email\": \"jane@company.com\",\n  \"role\": \"company\",\n  \"company_name\": \"ABC Suppliers Ltd\",\n  \"token\": \"eyJ0eXAiOiJKV1QiLCJhbGc...\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Login",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": "{{base_url}}/v1/auths/login",
+            "description": "Authenticate user and receive JWT token"
+          },
+          "response": [
+            {
+              "name": "Successful Login",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"john@example.com\",\n  \"password\": \"password123\"\n}"
+                },
+                "url": "{{base_url}}/v1/auths/login"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "cookie": [],
+              "body": "{\n  \"token\": \"eyJ0eXAiOiJKV1QiLCJhbGc...\",\n  \"user\": {\n    \"id\": 1,\n    \"name\": \"John Doe\",\n    \"email\": \"john@example.com\",\n    \"role\": \"user\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Current User Profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/v1/auths/me",
+            "description": "Get authenticated user's profile information"
+          },
+          "response": [
+            {
+              "name": "User Profile",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/v1/auths/me"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "cookie": [],
+              "body": "{\n  \"id\": 1,\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"role\": \"user\",\n  \"created_at\": \"2024-01-15T10:30:00Z\",\n  \"updated_at\": \"2024-01-15T10:30:00Z\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Requests (RFQs)",
+      "description": "Manage Request for Quotations - create, view, update, and cancel RFQs. Users can create and manage their RFQs, while companies can browse open RFQs based on their category subscriptions.",
+      "item": [
+        {
+          "name": "Create Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"category_id\": 1,\n  \"title\": \"Need 500 tons of steel\",\n  \"description\": \"High-quality steel required for construction project\",\n  \"quantity\": 500,\n  \"unit\": \"ton\",\n  \"delivery_city\": \"Dubai\",\n  \"delivery_lat\": 25.2048,\n  \"delivery_lng\": 55.2708,\n  \"required_delivery_date\": \"2024-03-15\",\n  \"budget_min\": 50000,\n  \"budget_max\": 75000,\n  \"expires_at\": \"2024-02-15T23:59:59Z\"\n}"
+            },
+            "url": "{{base_url}}/v1/requests",
+            "description": "Create a new RFQ (User role only)"
+          },
+          "response": [
+            {
+              "name": "Create Steel Request",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"category_id\": 1,\n  \"title\": \"Need 500 tons of steel\",\n  \"description\": \"High-quality steel required for construction project\",\n  \"quantity\": 500,\n  \"unit\": \"ton\",\n  \"delivery_city\": \"Dubai\",\n  \"delivery_lat\": 25.2048,\n  \"delivery_lng\": 55.2708,\n  \"required_delivery_date\": \"2024-03-15\",\n  \"budget_min\": 50000,\n  \"budget_max\": 75000,\n  \"expires_at\": \"2024-02-15T23:59:59Z\"\n}"
+                },
+                "url": "{{base_url}}/v1/requests"
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "cookie": [],
+              "body": "{\n  \"id\": 1,\n  \"user_id\": 1,\n  \"category_id\": 1,\n  \"title\": \"Need 500 tons of steel\",\n  \"description\": \"High-quality steel required for construction project\",\n  \"quantity\": 500,\n  \"unit\": \"ton\",\n  \"delivery_city\": \"Dubai\",\n  \"delivery_lat\": 25.2048,\n  \"delivery_lng\": 55.2708,\n  \"required_delivery_date\": \"2024-03-15\",\n  \"budget_min\": 50000,\n  \"budget_max\": 75000,\n  \"expires_at\": \"2024-02-15T23:59:59Z\",\n  \"status\": \"open\",\n  \"created_at\": \"2024-01-15T10:30:00Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get My Requests",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/v1/requests/mine",
+            "description": "Get all requests created by the authenticated user"
+          },
+          "response": [
+            {
+              "name": "List User Requests",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/v1/requests/mine"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "cookie": [],
+              "body": "[\n  {\n    \"id\": 1,\n    \"category_id\": 1,\n    \"title\": \"Need 500 tons of steel\",\n    \"quantity\": 500,\n    \"unit\": \"ton\",\n    \"delivery_city\": \"Dubai\",\n    \"required_delivery_date\": \"2024-03-15\",\n    \"status\": \"open\",\n    \"created_at\": \"2024-01-15T10:30:00Z\"\n  }\n]"
+            }
+          ]
+        },
+        {
+          "name": "Browse Open Requests",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/v1/requests",
+            "description": "Browse open RFQs (Company role only, filtered by subscriptions)"
+          },
+          "response": [
+            {
+              "name": "List Open Requests",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/v1/requests"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "cookie": [],
+              "body": "[\n  {\n    \"id\": 1,\n    \"user_id\": 1,\n    \"category_id\": 1,\n    \"title\": \"Need 500 tons of steel\",\n    \"description\": \"High-quality steel required for construction project\",\n    \"quantity\": 500,\n    \"unit\": \"ton\",\n    \"delivery_city\": \"Dubai\",\n    \"required_delivery_date\": \"2024-03-15\",\n    \"budget_min\": 50000,\n    \"budget_max\": 75000,\n    \"status\": \"open\",\n    \"expires_at\": \"2024-02-15T23:59:59Z\",\n    \"created_at\": \"2024-01-15T10:30:00Z\"\n  }\n]"
+            }
+          ]
+        },
+        {
+          "name": "Get Request by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/v1/requests/:id",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "requests", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1",
+                  "description": "Request ID"
+                }
+              ]
+            },
+            "description": "Get detailed information about a specific request"
+          },
+          "response": [
+            {
+              "name": "Request Details",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/v1/requests/:id",
+                  "host": ["{{base_url}}"],
+                  "path": ["v1", "requests", ":id"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "1"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "cookie": [],
+              "body": "{\n  \"id\": 1,\n  \"user_id\": 1,\n  \"category_id\": 1,\n  \"title\": \"Need 500 tons of steel\",\n  \"description\": \"High-quality steel required for construction project\",\n  \"quantity\": 500,\n  \"unit\": \"ton\",\n  \"delivery_city\": \"Dubai\",\n  \"delivery_lat\": 25.2048,\n  \"delivery_lng\": 55.2708,\n  \"required_delivery_date\": \"2024-03-15\",\n  \"budget_min\": 50000,\n  \"budget_max\": 75000,\n  \"expires_at\": \"2024-02-15T23:59:59Z\",\n  \"status\": \"open\",\n  \"awarded_quotation_id\": null,\n  \"created_at\": \"2024-01-15T10:30:00Z\",\n  \"updated_at\": \"2024-01-15T10:30:00Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Request",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 600,\n  \"budget_max\": 80000\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/v1/requests/:id",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "requests", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1",
+                  "description": "Request ID"
+                }
+              ]
+            },
+            "description": "Update an existing request (User role only)"
+          },
+          "response": [
+            {
+              "name": "Update Request Details",
+              "originalRequest": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"quantity\": 600,\n  \"budget_max\": 80000\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/v1/requests/:id",
+                  "host": ["{{base_url}}"],
+                  "path": ["v1", "requests", ":id"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "1"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "cookie": [],
+              "body": "{\n  \"id\": 1,\n  \"quantity\": 600,\n  \"budget_max\": 80000,\n  \"updated_at\": \"2024-01-16T14:20:00Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Cancel Request",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/v1/requests/:id/cancel",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "requests", ":id", "cancel"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1",
+                  "description": "Request ID"
+                }
+              ]
+            },
+            "description": "Cancel an open request (User role only)"
+          },
+          "response": [
+            {
+              "name": "Cancel Request",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/v1/requests/:id/cancel",
+                  "host": ["{{base_url}}"],
+                  "path": ["v1", "requests", ":id", "cancel"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "1"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "cookie": [],
+              "body": "{\n  \"id\": 1,\n  \"status\": \"cancelled\",\n  \"updated_at\": \"2024-01-16T15:00:00Z\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Quotations",
+      "description": "Manage quotations - submit, view, update, withdraw, accept, and reject quotations. Companies submit quotations for RFQs, and users can accept or reject them.",
+      "item": [
+        {
+          "name": "Submit Quotation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"request_id\": 1,\n  \"price_per_unit\": 120,\n  \"total_price\": 60000,\n  \"delivery_days\": 30,\n  \"delivery_cost\": 2000,\n  \"payment_terms\": \"50% advance, 50% on delivery\",\n  \"notes\": \"Premium quality steel with certifications\",\n  \"valid_until\": \"2024-02-10T23:59:59Z\"\n}"
+            },
+            "url": "{{base_url}}/v1/quotations",
+            "description": "Submit a quotation for an RFQ (Company role only)"
+          },
+          "response": [
+            {
+              "name": "Submit Quotation",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"request_id\": 1,\n  \"price_per_unit\": 120,\n  \"total_price\": 60000,\n  \"delivery_days\": 30,\n  \"delivery_cost\": 2000,\n  \"payment_terms\": \"50% advance, 50% on delivery\",\n  \"notes\": \"Premium quality steel with certifications\",\n  \"valid_until\": \"2024-02-10T23:59:59Z\"\n}"
+                },
+                "url": "{{base_url}}/v1/quotations"
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "cookie": [],
+              "body": "{\n  \"id\": 1,\n  \"request_id\": 1,\n  \"company_id\": 2,\n  \"price_per_unit\": 120,\n  \"total_price\": 60000,\n  \"delivery_days\": 30,\n  \"delivery_cost\": 2000,\n  \"payment_terms\": \"50% advance, 50% on delivery\",\n  \"notes\": \"Premium quality steel with certifications\",\n  \"valid_until\": \"2024-02-10T23:59:59Z\",\n  \"status\": \"submitted\",\n  \"created_at\": \"2024-01-16T10:00:00Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get My Quotations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/v1/quotations/mine",
+            "description": "Get all quotations submitted by the company"
+          },
+          "response": [
+            {
+              "name": "List Company Quotations",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/v1/quotations/mine"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "cookie": [],
+              "body": "[\n  {\n    \"id\": 1,\n    \"request_id\": 1,\n    \"price_per_unit\": 120,\n    \"total_price\": 60000,\n    \"delivery_days\": 30,\n    \"status\": \"submitted\",\n    \"created_at\": \"2024-01-16T10:00:00Z\"\n  }\n]"
+            }
+          ]
+        },
+        {
+          "name": "Get Quotations for Request",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/v1/quotations/by-request?request_id=:request_id",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "quotations", "by-request"],
+              "query": [
+                {
+                  "key": "request_id",
+                  "value": ":request_id",
+                  "description": "Request ID"
+                }
+              ]
+            },
+            "description": "Get all quotations for a specific request"
+          },
+          "response": [
+            {
+              "name": "List Request Quotations",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/v1/quotations/by-request?request_id=1",
+                  "host": ["{{base_url}}"],
+                  "path": ["v1", "quotations", "by-request"],
+                  "query": [
+                    {
+                      "key": "request_id",
+                      "value": "1"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "cookie": [],
+              "body": "[\n  {\n    \"id\": 1,\n    \"request_id\": 1,\n    \"company_id\": 2,\n    \"company_name\": \"ABC Suppliers Ltd\",\n    \"company_rating\": 4.5,\n    \"price_per_unit\": 120,\n    \"total_price\": 60000,\n    \"delivery_days\": 30,\n    \"delivery_cost\": 2000,\n    \"payment_terms\": \"50% advance, 50% on delivery\",\n    \"status\": \"submitted\",\n    \"created_at\": \"2024-01-16T10:00:00Z\"\n  }\n]"
+            }
+          ]
+        },
+        {
+          "name": "Update Quotation",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"price_per_unit\": 115,\n  \"total_price\": 57500,\n  \"delivery_days\": 25\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/v1/quotations/:id",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "quotations", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1",
+                  "description": "Quotation ID"
+                }
+              ]
+            },
+            "description": "Update an existing quotation (Company role only)"
+          },
+          "response": [
+            {
+              "name": "Update Quotation",
+              "originalRequest": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"price_per_unit\": 115,\n  \"total_price\": 57500,\n  \"delivery_days\": 25\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/v1/quotations/:id",
+                  "host": ["{{base_url}}"],
+                  "path": ["v1", "quotations", ":id"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "1"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "cookie": [],
+              "body": "{\n  \"id\": 1,\n  \"price_per_unit\": 115,\n  \"total_price\": 57500,\n  \"delivery_days\": 25,\n  \"status\": \"updated\",\n  \"updated_at\": \"2024-01-17T09:00:00Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Withdraw Quotation",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/v1/quotations/:id/withdraw",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "quotations", ":id", "withdraw"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1",
+                  "description": "Quotation ID"
+                }
+              ]
+            },
+            "description": "Withdraw a submitted quotation (Company role only)"
+          },
+          "response": [
+            {
+              "name": "Withdraw Quotation",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/v1/quotations/:id/withdraw",
+                  "host": ["{{base_url}}"],
+                  "path": ["v1", "quotations", ":id", "withdraw"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "1"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "cookie": [],
+              "body": "{\n  \"id\": 1,\n  \"status\": \"withdrawn\",\n  \"updated_at\": \"2024-01-17T10:00:00Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Accept Quotation",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/v1/quotations/:id/accept",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "quotations", ":id", "accept"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1",
+                  "description": "Quotation ID"
+                }
+              ]
+            },
+            "description": "Accept/award a quotation (User role only)"
+          },
+          "response": [
+            {
+              "name": "Accept Quotation",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/v1/quotations/:id/accept",
+                  "host": ["{{base_url}}"],
+                  "path": ["v1", "quotations", ":id", "accept"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "1"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "cookie": [],
+              "body": "{\n  \"id\": 1,\n  \"status\": \"accepted\",\n  \"request\": {\n    \"id\": 1,\n    \"status\": \"awarded\",\n    \"awarded_quotation_id\": 1\n  },\n  \"updated_at\": \"2024-01-18T11:00:00Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Reject Quotation",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/v1/quotations/:id/reject",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "quotations", ":id", "reject"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1",
+                  "description": "Quotation ID"
+                }
+              ]
+            },
+            "description": "Reject a quotation (User role only)"
+          },
+          "response": [
+            {
+              "name": "Reject Quotation",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/v1/quotations/:id/reject",
+                  "host": ["{{base_url}}"],
+                  "path": ["v1", "quotations", ":id", "reject"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "1"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "cookie": [],
+              "body": "{\n  \"id\": 1,\n  \"status\": \"rejected\",\n  \"updated_at\": \"2024-01-18T11:30:00Z\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Categories",
+      "description": "Browse product/service categories. Categories are used to organize RFQs and manage company subscriptions.",
+      "item": [
+        {
+          "name": "List Categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/v1/categories",
+            "description": "Get all available categories"
+          },
+          "response": [
+            {
+              "name": "List All Categories",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/v1/categories"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "cookie": [],
+              "body": "[\n  {\n    \"id\": 1,\n    \"name\": \"Construction Materials\"\n  },\n  {\n    \"id\": 2,\n    \"name\": \"Electronics\"\n  },\n  {\n    \"id\": 3,\n    \"name\": \"Industrial Equipment\"\n  },\n  {\n    \"id\": 4,\n    \"name\": \"Office Supplies\"\n  }\n]"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Subscriptions",
+      "description": "Manage category subscriptions for companies. Companies subscribe to categories to receive notifications about new RFQs in those categories.",
+      "item": [
+        {
+          "name": "List My Subscriptions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/v1/subscriptions",
+            "description": "Get all category subscriptions"
+          },
+          "response": [
+            {
+              "name": "List Subscriptions",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/v1/subscriptions"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "cookie": [],
+              "body": "[\n  {\n    \"id\": 1,\n    \"actor_id\": 2,\n    \"category_id\": 1,\n    \"actor_role\": \"company\",\n    \"category\": {\n      \"id\": 1,\n      \"name\": \"Construction Materials\"\n    },\n    \"created_at\": \"2024-01-15T12:00:00Z\"\n  }\n]"
+            }
+          ]
+        },
+        {
+          "name": "Subscribe to Category",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"category_id\": 1\n}"
+            },
+            "url": "{{base_url}}/v1/subscriptions",
+            "description": "Subscribe to a category to receive notifications"
+          },
+          "response": [
+            {
+              "name": "Create Subscription",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"category_id\": 1\n}"
+                },
+                "url": "{{base_url}}/v1/subscriptions"
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "cookie": [],
+              "body": "{\n  \"id\": 1,\n  \"actor_id\": 2,\n  \"category_id\": 1,\n  \"actor_role\": \"company\",\n  \"created_at\": \"2024-01-15T12:00:00Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Unsubscribe from Category",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/v1/subscriptions/:id",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "subscriptions", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1",
+                  "description": "Subscription ID"
+                }
+              ]
+            },
+            "description": "Remove a category subscription"
+          },
+          "response": [
+            {
+              "name": "Delete Subscription",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/v1/subscriptions/:id",
+                  "host": ["{{base_url}}"],
+                  "path": ["v1", "subscriptions", ":id"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "1"
+                    }
+                  ]
+                }
+              },
+              "status": "No Content",
+              "code": 204,
+              "_postman_previewlanguage": "json",
+              "cookie": [],
+              "body": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "description": "View and manage notifications. Users and companies receive notifications about important events like new quotations, accepted/rejected quotations, etc.",
+      "item": [
+        {
+          "name": "List Notifications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/v1/notifications",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "notifications"],
+              "query": [
+                {
+                  "key": "unread",
+                  "value": "1",
+                  "description": "Filter for unread notifications only",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Get all notifications, optionally filter by unread status"
+          },
+          "response": [
+            {
+              "name": "All Notifications",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/v1/notifications"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "cookie": [],
+              "body": "[\n  {\n    \"id\": 1,\n    \"recipient_id\": 1,\n    \"type\": \"quotation_received\",\n    \"title\": \"New Quotation Received\",\n    \"body\": \"ABC Suppliers Ltd submitted a quotation for your request\",\n    \"data_json\": \"{\\\"request_id\\\": 1, \\\"quotation_id\\\": 1}\",\n    \"is_read\": false,\n    \"created_at\": \"2024-01-16T10:05:00Z\"\n  }\n]"
+            },
+            {
+              "name": "Unread Notifications",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/v1/notifications?unread=1",
+                  "host": ["{{base_url}}"],
+                  "path": ["v1", "notifications"],
+                  "query": [
+                    {
+                      "key": "unread",
+                      "value": "1"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "cookie": [],
+              "body": "[\n  {\n    \"id\": 1,\n    \"recipient_id\": 1,\n    \"type\": \"quotation_received\",\n    \"title\": \"New Quotation Received\",\n    \"body\": \"ABC Suppliers Ltd submitted a quotation for your request\",\n    \"is_read\": false,\n    \"created_at\": \"2024-01-16T10:05:00Z\"\n  }\n]"
+            }
+          ]
+        },
+        {
+          "name": "Mark Notification as Read",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/v1/notifications/:id/read",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "notifications", ":id", "read"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1",
+                  "description": "Notification ID"
+                }
+              ]
+            },
+            "description": "Mark a notification as read"
+          },
+          "response": [
+            {
+              "name": "Mark as Read",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/v1/notifications/:id/read",
+                  "host": ["{{base_url}}"],
+                  "path": ["v1", "notifications", ":id", "read"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "1"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "cookie": [],
+              "body": "{\n  \"id\": 1,\n  \"is_read\": true,\n  \"updated_at\": \"2024-01-16T11:00:00Z\"\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -10,8 +10,7 @@ class WsPublisher
     {
         $cfg = Yii::$app->params['centrifugo'] ?? null;
         if (!$cfg || empty($cfg['api_url']) || empty($cfg['api_key'])) {
-            // If WS not configured yet, don't break normal API flow
-            return;
+            return; // WS not configured; don't break API flow
         }
 
         $payload = [
@@ -27,7 +26,6 @@ class WsPublisher
             'X-API-Key: ' . $cfg['api_key'],
         ]);
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload, JSON_UNESCAPED_UNICODE));
-
         curl_exec($ch);
         curl_close($ch);
     }

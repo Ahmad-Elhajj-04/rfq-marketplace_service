@@ -130,15 +130,14 @@ class QuotationsController extends Controller
             return ['message' => 'Validation failed', 'errors' => $q->getErrors()];
         }
 
+// Notify winning company
 NotificationService::create(
-    (int)$req->user_id,
-    'quotation.created',
-    'New quotation received',
-    'A company submitted a quotation for: ' . $req->title,
-    ['request_id' => (int)$req->id, 'quotation_id' => (int)$q->id],
-    'user:' . (int)$req->user_id
+    (int)$q->company_id,
+    'quotation.accepted',
+    'Your quotation was accepted',
+    'You won the request: ' . $req->title,
+    ['request_id' => (int)$req->id, 'quotation_id' => (int)$q->id]
 );
-
         return ['quotation' => $q];
     }
 
