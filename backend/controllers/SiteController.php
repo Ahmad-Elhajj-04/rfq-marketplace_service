@@ -15,6 +15,11 @@ class SiteController extends Controller
     /**
      * {@inheritdoc}
      */
+
+    public function actionOptions()
+{
+    return "ok";
+}
     public function behaviors()
     {
         return [

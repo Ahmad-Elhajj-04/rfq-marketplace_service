@@ -1,6 +1,6 @@
 {
   "token_hmac_secret_key": "CHANGE_ME_TO_A_LONG_RANDOM_SECRET_123456789",
   "api_key": "rfq-backend-secret",
-  "http_api": true,
-  "allowed_origins": ["*"]
+  "allowed_origins": ["*"],
+  "allow_anonymous_connect_without_token": true
 }
