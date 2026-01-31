@@ -85,22 +85,21 @@ $config = [
     'enablePrettyUrl' => true,
     'showScriptName' => false,
     'rules' => [
-        // Optional but helpful for Postman/browser preflight
+        // ✅ Handles OPTIONS preflight (Postman/browser)
         'OPTIONS <route:.+>' => 'site/options',
 
-        // Default REST controllers (no custom actions)
-[
-  'class' => 'yii\rest\UrlRule',
-  'controller' => [
-    'v1/auth',
-    'v1/requests',
-    'v1/categories',
-    'v1/subscriptions',
-    'v1/notifications',
-  ],
-],
+        // ✅ Default REST controllers (only standard CRUD routes)
+        [
+            'class' => 'yii\rest\UrlRule',
+            'controller' => [
+                'v1/auth',
+                'v1/categories',
+                'v1/subscriptions',
+                'v1/notifications',
+            ],
+        ],
 
-        // Requests: add custom route for cancel
+        // ✅ Requests (custom actions)
         [
             'class' => 'yii\rest\UrlRule',
             'controller' => ['v1/requests'],
@@ -111,7 +110,7 @@ $config = [
             ],
         ],
 
-        // Quotations: custom routes
+        // ✅ Quotations (custom actions)
         [
             'class' => 'yii\rest\UrlRule',
             'controller' => ['v1/quotations'],
@@ -124,10 +123,20 @@ $config = [
                 'POST {id}/reject' => 'reject',
             ],
         ],
+
+        // ✅ Offers (custom actions)
+        [
+            'class' => 'yii\rest\UrlRule',
+            'controller' => ['v1/offers'],
+            'pluralize' => false,
+            'extraPatterns' => [
+                'GET mine' => 'mine',
+                'POST {id}/deactivate' => 'deactivate',
+            ],
+        ],
     ],
 ],
     ],
-
     'params' => $params,
 ];
 
