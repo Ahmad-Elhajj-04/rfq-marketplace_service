@@ -13,7 +13,7 @@ class JwtAuth extends AuthMethod
     {
         $authHeader = $request->getHeaders()->get('Authorization');
         if (!$authHeader || stripos($authHeader, 'Bearer ') !== 0) {
-            return null; // no token provided
+            return null; 
         }
 
         $token = trim(substr($authHeader, 7));

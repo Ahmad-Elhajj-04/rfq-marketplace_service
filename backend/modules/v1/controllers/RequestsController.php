@@ -43,7 +43,6 @@ class RequestsController extends Controller
         }
     }
 
-    // POST /v1/requests (USER)
     public function actionCreate()
     {
         $this->requireRole('user');
@@ -69,7 +68,6 @@ class RequestsController extends Controller
         $model->budget_min = $body['budget_min'] ?? null;
         $model->budget_max = $body['budget_max'] ?? null;
 
-        // expires_at can be datetime string or unix timestamp
         $expires = $body['expires_at'] ?? null;
         if (is_string($expires)) {
             $ts = strtotime($expires);
@@ -93,7 +91,6 @@ class RequestsController extends Controller
             return ['message' => 'Validation failed', 'errors' => $model->getErrors()];
         }
 
-        // ✅ Notify subscribed companies (DB + WS broadcast to category channel)
         $subs = CategorySubscription::find()
             ->where(['category_id' => (int)$model->category_id, 'actor_role' => 'company'])
             ->all();
@@ -112,7 +109,6 @@ class RequestsController extends Controller
         return ['request' => $model];
     }
 
-    // GET /v1/requests/mine (USER)
     public function actionMine()
     {
         $this->requireRole('user');
@@ -125,7 +121,6 @@ class RequestsController extends Controller
         return ['requests' => $rows];
     }
 
-    // GET /v1/requests/{id}
     public function actionView($id)
     {
         $identity = Yii::$app->user->identity;
@@ -134,13 +129,11 @@ class RequestsController extends Controller
         if (!$model) {
             throw new NotFoundHttpException('Request not found.');
         }
-
-        // user can view own, company can view open not expired
         if ($identity->role === 'user') {
             if ((int)$model->user_id !== (int)$identity->id) {
                 throw new ForbiddenHttpException('Forbidden.');
             }
-        } else { // company
+        } else { 
             if ($model->status !== 'open' || (int)$model->expires_at < time()) {
                 throw new ForbiddenHttpException('Request is not available.');
             }
@@ -149,7 +142,6 @@ class RequestsController extends Controller
         return ['request' => $model];
     }
 
-    // PATCH /v1/requests/{id} (USER)
     public function actionUpdate($id)
     {
         $this->requireRole('user');
@@ -200,7 +192,6 @@ class RequestsController extends Controller
         return ['request' => $model];
     }
 
-    // POST /v1/requests/{id}/cancel (USER)
     public function actionCancel($id)
     {
         $this->requireRole('user');
@@ -223,7 +214,6 @@ class RequestsController extends Controller
         return ['request' => $model];
     }
 
-    // GET /v1/requests (COMPANY browse, filtered by subscriptions)
     public function actionIndex()
     {
         $this->requireRole('company');
@@ -246,7 +236,7 @@ class RequestsController extends Controller
             ->andWhere(['category_id' => $categoryIds])
             ->orderBy(['created_at' => SORT_DESC]);
 
-        // optional filter by one category
+
         $filterCategoryId = (int)Yii::$app->request->get('category_id', 0);
         if ($filterCategoryId > 0) {
             if (!in_array($filterCategoryId, $categoryIds, true)) {

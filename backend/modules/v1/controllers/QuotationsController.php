@@ -7,9 +7,10 @@ use yii\rest\Controller;
 use yii\web\BadRequestHttpException;
 use yii\web\ForbiddenHttpException;
 use yii\web\NotFoundHttpException;
+
 use app\components\JwtAuth;
 use app\models\Quotation;
-use app\models\Request;
+use app\models\Request as RfqRequest;
 use app\services\NotificationService;
 
 class QuotationsController extends Controller
@@ -29,7 +30,6 @@ class QuotationsController extends Controller
             'create' => ['POST'],
             'mine' => ['GET'],
             'by-request' => ['GET'],
-            'update' => ['PATCH'],
             'withdraw' => ['POST'],
             'accept' => ['POST'],
             'reject' => ['POST'],
@@ -44,100 +44,97 @@ class QuotationsController extends Controller
         }
     }
 
-    private function loadRequestOr404(int $id): Request
+    private function toFloat($v): float
     {
-        $req = Request::findOne($id);
-        if (!$req) {
-            throw new NotFoundHttpException('Request not found.');
-        }
-        return $req;
+        if ($v === null) return 0.0;
+        return (float)$v;
     }
 
-    private function loadQuotationOr404(int $id): Quotation
+    private function toInt($v): int
     {
-        $q = Quotation::findOne($id);
-        if (!$q) {
-            throw new NotFoundHttpException('Quotation not found.');
-        }
-        return $q;
+        if ($v === null) return 0;
+        return (int)$v;
     }
 
-    // POST /v1/quotations (COMPANY)
+    private function norm(float $value, float $min, float $max): float
+    {
+        if ($max <= $min) return 0.0;
+        return ($value - $min) / ($max - $min);
+    }
+
+    // ----------------------------
+    // POST /v1/quotations
+    // Company submits quotation
+    // ----------------------------
     public function actionCreate()
     {
         $this->requireRole('company');
 
         $body = Yii::$app->request->bodyParams;
+        $now = time();
+
         $requestId = (int)($body['request_id'] ?? 0);
         if ($requestId <= 0) {
             throw new BadRequestHttpException('request_id is required.');
         }
 
-        $req = $this->loadRequestOr404($requestId);
-
-        if ($req->status !== 'open' || (int)$req->expires_at <= time()) {
-            throw new BadRequestHttpException('Request is not available for quotations.');
+        $req = RfqRequest::findOne($requestId);
+        if (!$req) {
+            throw new NotFoundHttpException('Request not found.');
         }
 
-        $companyId = (int)Yii::$app->user->id;
-
-        $existing = Quotation::find()
-            ->where(['request_id' => $requestId, 'company_id' => $companyId])
-            ->one();
-
-        if ($existing && !in_array($existing->status, ['withdrawn'], true)) {
-            throw new BadRequestHttpException('You already submitted a quotation for this request.');
+        if ($req->status !== 'open' || $req->expires_at <= $now) {
+            throw new BadRequestHttpException('Request is not available.');
         }
 
-        $now = time();
-        $q = $existing ?: new Quotation();
-
+        $q = new Quotation();
         $q->request_id = $requestId;
-        $q->company_id = $companyId;
+        $q->company_id = (int)Yii::$app->user->id;
+
         $q->price_per_unit = $body['price_per_unit'] ?? null;
         $q->total_price = $body['total_price'] ?? null;
         $q->delivery_days = $body['delivery_days'] ?? null;
-        $q->delivery_cost = $body['delivery_cost'] ?? 0;
-        $q->payment_terms = trim((string)($body['payment_terms'] ?? ''));
-        $q->notes = $body['notes'] ?? null;
+        $q->delivery_cost = $body['delivery_cost'] ?? null;
+        $q->payment_terms = (string)($body['payment_terms'] ?? '');
+        $q->notes = (string)($body['notes'] ?? '');
 
+  
         $validUntil = $body['valid_until'] ?? null;
         if (is_string($validUntil)) {
             $ts = strtotime($validUntil);
             if ($ts === false) {
-                throw new BadRequestHttpException('valid_until must be valid datetime.');
+                throw new BadRequestHttpException('valid_until must be a valid datetime string or timestamp.');
             }
             $q->valid_until = $ts;
         } else {
             $q->valid_until = (int)$validUntil;
         }
 
-        if ((int)$q->valid_until <= $now) {
+        if ($q->valid_until <= $now) {
             throw new BadRequestHttpException('valid_until must be in the future.');
         }
 
-        $q->status = $existing ? 'updated' : 'submitted';
-        $q->created_at = $existing ? (int)$q->created_at : $now;
+        $q->status = 'submitted';
+        $q->created_at = $now;
         $q->updated_at = $now;
 
         if (!$q->save()) {
             return ['message' => 'Validation failed', 'errors' => $q->getErrors()];
         }
 
-        // ✅ Notify request owner (DB + WS broadcast to user channel)
+    
         NotificationService::create(
             (int)$req->user_id,
             'quotation.created',
             'New quotation received',
-            'A company submitted a quotation for: ' . $req->title,
-            ['request_id' => (int)$req->id, 'quotation_id' => (int)$q->id],
-            'user:' . (int)$req->user_id
+            "A company submitted a quotation for: {$req->title}",
+            ['request_id' => (int)$req->id, 'quotation_id' => (int)$q->id]
         );
 
         return ['quotation' => $q];
     }
 
-    // GET /v1/quotations/mine (COMPANY)
+
     public function actionMine()
     {
         $this->requireRole('company');
@@ -150,7 +147,6 @@ class QuotationsController extends Controller
         return ['quotations' => $rows];
     }
 
-    // GET /v1/quotations/by-request?request_id=123 (USER)
     public function actionByRequest()
     {
         $this->requireRole('user');
@@ -160,165 +156,192 @@ class QuotationsController extends Controller
             throw new BadRequestHttpException('request_id is required.');
         }
 
-        $req = $this->loadRequestOr404($requestId);
+        $req = RfqRequest::findOne($requestId);
+        if (!$req) {
+            throw new NotFoundHttpException('Request not found.');
+        }
 
         if ((int)$req->user_id !== (int)Yii::$app->user->id) {
             throw new ForbiddenHttpException('Forbidden.');
         }
 
-        $quotes = Quotation::find()
+        $rows = Quotation::find()
             ->where(['request_id' => $requestId])
-            ->andWhere(['not in', 'status', ['withdrawn']])
+            ->orderBy(['created_at' => SORT_DESC]) 
             ->all();
 
-        return [
-            'quotations' => $quotes,
-        ];
-    }
-
-    // PATCH /v1/quotations/{id} (COMPANY)
-    public function actionUpdate($id)
-    {
-        $this->requireRole('company');
-
-        $q = $this->loadQuotationOr404((int)$id);
-
-        if ((int)$q->company_id !== (int)Yii::$app->user->id) {
-            throw new ForbiddenHttpException('Forbidden.');
-        }
-        if (in_array($q->status, ['accepted', 'rejected'], true)) {
-            throw new BadRequestHttpException('Quotation cannot be updated after decision.');
+        $list = [];
+        foreach ($rows as $q) {
+            $list[] = $q->toArray();
         }
 
-        $body = Yii::$app->request->bodyParams;
+        $submitted = [];
+        $others = [];
 
-        $allowed = ['price_per_unit', 'total_price', 'delivery_days', 'delivery_cost', 'payment_terms', 'notes', 'valid_until'];
-        foreach ($allowed as $field) {
-            if (array_key_exists($field, $body)) {
-                $q->$field = $body[$field];
+        foreach ($list as $q) {
+            if (($q['status'] ?? '') === 'submitted') {
+                $submitted[] = $q;
+            } else {
+                $q['score'] = null;
+                $q['rank'] = null;
+                $q['is_best'] = false;
+                $others[] = $q;
             }
         }
 
-        if (array_key_exists('valid_until', $body) && is_string($body['valid_until'])) {
-            $ts = strtotime($body['valid_until']);
-            if ($ts === false) {
-                throw new BadRequestHttpException('valid_until must be valid datetime.');
-            }
-            $q->valid_until = $ts;
+        if (count($submitted) === 0) {
+            return ['quotations' => $list]; 
         }
 
-        if ((int)$q->valid_until <= time()) {
-            throw new BadRequestHttpException('valid_until must be in the future.');
+
+        $prices = array_map(fn($q) => $this->toFloat($q['total_price'] ?? 0), $submitted);
+        $days   = array_map(fn($q) => $this->toFloat($q['delivery_days'] ?? 0), $submitted);
+        $costs  = array_map(fn($q) => $this->toFloat($q['delivery_cost'] ?? 0), $submitted);
+
+        $minPrice = min($prices); $maxPrice = max($prices);
+        $minDays  = min($days);   $maxDays  = max($days);
+        $minCost  = min($costs);  $maxCost  = max($costs);
+
+        $wPrice = 0.60;
+        $wDays  = 0.30;
+        $wCost  = 0.10;
+
+        for ($i = 0; $i < count($submitted); $i++) {
+            $p = $this->toFloat($submitted[$i]['total_price'] ?? 0);
+            $d = $this->toFloat($submitted[$i]['delivery_days'] ?? 0);
+            $c = $this->toFloat($submitted[$i]['delivery_cost'] ?? 0);
+
+            $score =
+                $wPrice * $this->norm($p, $minPrice, $maxPrice) +
+                $wDays  * $this->norm($d, $minDays, $maxDays) +
+                $wCost  * $this->norm($c, $minCost, $maxCost);
+
+            $submitted[$i]['score'] = round($score, 6);
         }
 
-        $q->status = 'updated';
-        $q->updated_at = time();
+        // Sort by score ascending (best first)
+        usort($submitted, function ($a, $b) {
+            return ($a['score'] <=> $b['score']);
+        });
 
-        if (!$q->save()) {
-            return ['message' => 'Validation failed', 'errors' => $q->getErrors()];
+        // Assign ranks
+        for ($i = 0; $i < count($submitted); $i++) {
+            $submitted[$i]['rank'] = $i + 1;
+            $submitted[$i]['is_best'] = ($i === 0);
         }
 
-        return ['quotation' => $q];
+        // Final sorted list: best→worst submitted first, then others
+        $final = array_merge($submitted, $others);
+
+        return ['quotations' => $final];
     }
 
-    // POST /v1/quotations/{id}/withdraw (COMPANY)
+
     public function actionWithdraw($id)
     {
         $this->requireRole('company');
 
-        $q = $this->loadQuotationOr404((int)$id);
-
+        $q = Quotation::findOne((int)$id);
+        if (!$q) {
+            throw new NotFoundHttpException('Quotation not found.');
+        }
         if ((int)$q->company_id !== (int)Yii::$app->user->id) {
             throw new ForbiddenHttpException('Forbidden.');
         }
-        if (in_array($q->status, ['accepted', 'rejected'], true)) {
-            throw new BadRequestHttpException('Quotation cannot be withdrawn after decision.');
+
+        if ($q->status !== 'submitted') {
+            throw new BadRequestHttpException('Only submitted quotations can be withdrawn.');
         }
 
         $q->status = 'withdrawn';
         $q->updated_at = time();
         $q->save(false, ['status', 'updated_at']);
 
-        return ['message' => 'Withdrawn', 'quotation' => $q];
+        return ['quotation' => $q];
     }
 
-    // POST /v1/quotations/{id}/accept (USER)
     public function actionAccept($id)
     {
         $this->requireRole('user');
 
-        $q = $this->loadQuotationOr404((int)$id);
-        $req = $this->loadRequestOr404((int)$q->request_id);
+        $q = Quotation::findOne((int)$id);
+        if (!$q) {
+            throw new NotFoundHttpException('Quotation not found.');
+        }
+
+        $req = RfqRequest::findOne((int)$q->request_id);
+        if (!$req) {
+            throw new NotFoundHttpException('Request not found.');
+        }
 
         if ((int)$req->user_id !== (int)Yii::$app->user->id) {
             throw new ForbiddenHttpException('Forbidden.');
         }
+
         if ($req->status !== 'open') {
             throw new BadRequestHttpException('Request is not open.');
         }
-        if ($q->status === 'withdrawn') {
-            throw new BadRequestHttpException('Cannot accept a withdrawn quotation.');
-        }
-
         $now = time();
+        $req->status = 'awarded';
+        $req->awarded_quotation_id = (int)$q->id;
+        $req->updated_at = $now;
+        $req->save(false, ['status', 'awarded_quotation_id', 'updated_at']);
+        $q->status = 'accepted';
+        $q->updated_at = $now;
+        $q->save(false, ['status', 'updated_at']);
 
-        $tx = Yii::$app->db->beginTransaction();
-        try {
-            $q->status = 'accepted';
-            $q->updated_at = $now;
-            $q->save(false, ['status', 'updated_at']);
+    
+        Quotation::updateAll(
+            ['status' => 'rejected', 'updated_at' => $now],
+            ['and',
+                ['request_id' => (int)$req->id],
+                ['status' => 'submitted'],
+                ['<>', 'id', (int)$q->id],
+            ]
+        );
 
-            Quotation::updateAll(
-                ['status' => 'rejected', 'updated_at' => $now],
-                ['and', ['request_id' => (int)$req->id], ['not', ['id' => (int)$q->id]], ['not in', 'status', ['withdrawn']]]
-            );
-
-            $req->status = 'awarded';
-            $req->awarded_quotation_id = (int)$q->id;
-            $req->updated_at = $now;
-            $req->save(false, ['status', 'awarded_quotation_id', 'updated_at']);
-
-            $tx->commit();
-        } catch (\Throwable $e) {
-            $tx->rollBack();
-            throw $e;
-        }
-
-        // ✅ Notify winning company (DB + WS broadcast to user channel)
         NotificationService::create(
             (int)$q->company_id,
             'quotation.accepted',
-            'Your quotation was accepted',
-            'You won the request: ' . $req->title,
-            ['request_id' => (int)$req->id, 'quotation_id' => (int)$q->id],
-            'user:' . (int)$q->company_id
+            'Quotation accepted',
+            "Your quotation was accepted for: {$req->title}",
+            ['request_id' => (int)$req->id, 'quotation_id' => (int)$q->id]
         );
 
-        return ['message' => 'Awarded', 'request' => $req, 'accepted_quotation' => $q];
+        return [
+            'message' => 'Awarded',
+            'request' => $req,
+            'accepted_quotation' => $q,
+        ];
     }
 
-    // POST /v1/quotations/{id}/reject (USER)
+ 
     public function actionReject($id)
     {
         $this->requireRole('user');
 
-        $q = $this->loadQuotationOr404((int)$id);
-        $req = $this->loadRequestOr404((int)$q->request_id);
+        $q = Quotation::findOne((int)$id);
+        if (!$q) {
+            throw new NotFoundHttpException('Quotation not found.');
+        }
+
+        $req = RfqRequest::findOne((int)$q->request_id);
+        if (!$req) {
+            throw new NotFoundHttpException('Request not found.');
+        }
 
         if ((int)$req->user_id !== (int)Yii::$app->user->id) {
             throw new ForbiddenHttpException('Forbidden.');
         }
-        if ($req->status !== 'open') {
-            throw new BadRequestHttpException('Request is not open.');
-        }
-        if (in_array($q->status, ['accepted', 'withdrawn'], true)) {
-            throw new BadRequestHttpException('Cannot reject this quotation.');
+
+        if ($q->status !== 'submitted') {
+            throw new BadRequestHttpException('Only submitted quotations can be rejected.');
         }
 
         $q->status = 'rejected';
         $q->updated_at = time();
         $q->save(false, ['status', 'updated_at']);
 
-        return ['message' => 'Rejected', 'quotation' => $q];
+        return ['quotation' => $q];
     }
 }

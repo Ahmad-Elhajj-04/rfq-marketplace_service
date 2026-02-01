@@ -43,8 +43,6 @@ class NotificationsController extends Controller
 
         return ['notifications' => $query->all()];
     }
-
-    // POST /v1/notifications/{id}/read
 public function actionRead($id)
 {
     $notification = Notification::findOne([

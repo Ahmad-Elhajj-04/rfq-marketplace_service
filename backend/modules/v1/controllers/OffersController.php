@@ -231,7 +231,6 @@ class OffersController extends Controller
         return ['message' => 'Deactivated', 'offer' => $offer];
     }
 
-    // Optional: GET /v1/offers/{id} (active only)
     public function actionView($id)
     {
         $offer = $this->findOfferOr404((int)$id);
