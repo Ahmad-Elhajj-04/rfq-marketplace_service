@@ -2,5 +2,7 @@
   "token_hmac_secret_key": "CHANGE_ME_TO_A_LONG_RANDOM_SECRET_123456789",
   "api_key": "rfq-backend-secret",
   "allowed_origins": ["*"],
-  "allow_anonymous_connect_without_token": true
+  "admin": true,
+  "admin_password": "admin12345",
+  "admin_secret": "adminsecret12345"
 }

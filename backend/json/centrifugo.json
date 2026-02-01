@@ -1,0 +1,17 @@
+{
+  "token_hmac_secret_key": "super-long-random-secret-key-change-this",
+  "api_key": "rfq-backend-secret",
+  "allowed_origins": ["*"],
+
+  "admin": true,
+  "admin_password": "admin123",
+  "admin_secret": "admin-secret-123",
+
+  "namespaces": [
+    {
+      "name": "user",
+      "publish": true,
+      "subscribe_to_publish": true
+    }
+  ]
+}

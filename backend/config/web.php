@@ -14,26 +14,27 @@ $config = [
         '@npm'   => '@vendor/npm-asset',
     ],
 
+    //  API Versioning (v1)
     'modules' => [
         'v1' => [
             'class' => \app\modules\v1\Module::class,
         ],
     ],
 
-    
-    'as cors' => [
-        'class' => Cors::class,
-        'cors' => [
-            'Origin' => ['*'],
-            'Access-Control-Request-Method' => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-            'Access-Control-Request-Headers' => ['*'],
-            'Access-Control-Max-Age' => 86400,
-            'Access-Control-Allow-Credentials' => false,
-        ],
+    //  CORS (FIXED for Flutter Web)
+    // Flutter web runs from http://localhost:<randomPort>
+'as cors' => [
+    'class' => \yii\filters\Cors::class,
+    'cors' => [
+        'Origin' => ['*'],
+        'Access-Control-Request-Method' => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+        'Access-Control-Request-Headers' => ['*'],
+        'Access-Control-Allow-Credentials' => false,
+        'Access-Control-Max-Age' => 86400,
     ],
-
+],
     'components' => [
-
+        // Parse JSON
         'request' => [
             'cookieValidationKey' => 'oXfPHProvgQiUo-mUmovZF0lZ_TL3sV_',
             'parsers' => [
@@ -41,6 +42,7 @@ $config = [
             ],
         ],
 
+        // Always return JSON
         'response' => [
             'format' => yii\web\Response::FORMAT_JSON,
         ],
@@ -49,11 +51,14 @@ $config = [
             'class' => 'yii\caching\FileCache',
         ],
 
+        // API user (no sessions)
         'user' => [
             'identityClass' => app\models\User::class,
             'enableSession' => false,
             'loginUrl' => null,
         ],
+
+        // keep jwt component if used elsewhere
         'jwt' => [
             'class' => \sizeg\jwt\Jwt::class,
             'key' => $params['jwtSecret'],
@@ -61,12 +66,6 @@ $config = [
 
         'errorHandler' => [
             'errorAction' => 'site/error',
-        ],
-
-        'mailer' => [
-            'class' => \yii\symfonymailer\Mailer::class,
-            'viewPath' => '@app/mail',
-            'useFileTransport' => true,
         ],
 
         'log' => [
@@ -81,62 +80,69 @@ $config = [
 
         'db' => $db,
 
-'urlManager' => [
-    'enablePrettyUrl' => true,
-    'showScriptName' => false,
-    'rules' => [
-        // ✅ Handles OPTIONS preflight (Postman/browser)
-        'OPTIONS <route:.+>' => 'site/options',
+        // Routes
+        'urlManager' => [
+            'enablePrettyUrl' => true,
+            'showScriptName' => false,
+            'rules' => [
+                // Handle preflight OPTIONS so browser never 404s
+                'OPTIONS <route:.+>' => 'site/options',
 
-        // ✅ Default REST controllers (only standard CRUD routes)
-        [
-            'class' => 'yii\rest\UrlRule',
-            'controller' => [
-                'v1/auth',
-                'v1/categories',
-                'v1/subscriptions',
-                'v1/notifications',
-            ],
-        ],
+                // Default REST (basic CRUD)
+                [
+                    'class' => 'yii\rest\UrlRule',
+                    'controller' => [
+                        'v1/auth',
+                        'v1/categories',
+                        'v1/subscriptions',
+                    ],
+                ],
 
-        // ✅ Requests (custom actions)
-        [
-            'class' => 'yii\rest\UrlRule',
-            'controller' => ['v1/requests'],
-            'pluralize' => false,
-            'extraPatterns' => [
-                'GET mine' => 'mine',
-                'POST {id}/cancel' => 'cancel',
-            ],
-        ],
-
-        // ✅ Quotations (custom actions)
-        [
-            'class' => 'yii\rest\UrlRule',
-            'controller' => ['v1/quotations'],
-            'pluralize' => false,
-            'extraPatterns' => [
-                'GET mine' => 'mine',
-                'GET by-request' => 'by-request',
-                'POST {id}/withdraw' => 'withdraw',
-                'POST {id}/accept' => 'accept',
-                'POST {id}/reject' => 'reject',
-            ],
-        ],
-
-        // ✅ Offers (custom actions)
-        [
-            'class' => 'yii\rest\UrlRule',
-            'controller' => ['v1/offers'],
-            'pluralize' => false,
-            'extraPatterns' => [
-                'GET mine' => 'mine',
-                'POST {id}/deactivate' => 'deactivate',
-            ],
-        ],
+                // Requests custom routes
+                [
+                    'class' => 'yii\rest\UrlRule',
+                    'controller' => ['v1/requests'],
+                    'pluralize' => false,
+                    'extraPatterns' => [
+                        'GET mine' => 'mine',
+                        'POST {id}/cancel' => 'cancel',
+                    ],
+                ],
+[
+    'class' => 'yii\rest\UrlRule',
+    'controller' => ['v1/public'],
+    'pluralize' => false,
+    'extraPatterns' => [
+        'GET requests' => 'requests',
     ],
 ],
+                // Quotations custom routes
+                [
+                    'class' => 'yii\rest\UrlRule',
+                    'controller' => ['v1/quotations'],
+                    'pluralize' => false,
+                    'extraPatterns' => [
+                        'GET mine' => 'mine',
+                        'GET by-request' => 'by-request',
+                        'POST {id}/withdraw' => 'withdraw',
+                        'POST {id}/accept' => 'accept',
+                        'POST {id}/reject' => 'reject',
+                    ],
+                ],
+
+                // Notifications custom routes (THIS FIXES /read)
+                [
+                    'class' => 'yii\rest\UrlRule',
+                    'controller' => ['v1/notifications'],
+                    'pluralize' => false,
+                    'extraPatterns' => [
+                        'POST {id}/read' => 'read',
+                    ],
+                ],
+            ],
+        ],
     ],
+
     'params' => $params,
 ];
 
@@ -144,13 +150,11 @@ if (YII_ENV_DEV) {
     $config['bootstrap'][] = 'debug';
     $config['modules']['debug'] = [
         'class' => 'yii\debug\Module',
-       
     ];
 
     $config['bootstrap'][] = 'gii';
     $config['modules']['gii'] = [
         'class' => 'yii\gii\Module',
-       
     ];
 }
 
