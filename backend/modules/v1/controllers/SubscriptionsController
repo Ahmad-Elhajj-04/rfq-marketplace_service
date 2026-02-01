@@ -1,0 +1,119 @@
+<?php
+
+namespace app\modules\v1\controllers;
+
+use Yii;
+use yii\rest\Controller;
+use yii\web\BadRequestHttpException;
+use yii\web\ForbiddenHttpException;
+use yii\web\NotFoundHttpException;
+use app\components\JwtAuth;
+use app\models\CategorySubscription;
+
+class SubscriptionsController extends Controller
+{
+    public function behaviors()
+    {
+        $behaviors = parent::behaviors();
+        $behaviors['authenticator'] = [
+            'class' => JwtAuth::class,
+        ];
+        return $behaviors;
+    }
+
+    public function verbs()
+    {
+        return [
+            'index' => ['GET'],
+            'create' => ['POST'],
+            'delete' => ['DELETE'],
+        ];
+    }
+
+    private function currentRole(): string
+    {
+        $identity = Yii::$app->user->identity;
+        if (!$identity) {
+            throw new ForbiddenHttpException('Forbidden.');
+        }
+        return (string)$identity->role;
+    }
+
+    private function currentId(): int
+    {
+        return (int)Yii::$app->user->id;
+    }
+
+    // GET /v1/subscriptions
+    public function actionIndex()
+    {
+        $role = $this->currentRole();
+        $actorId = $this->currentId();
+
+        $subs = CategorySubscription::find()
+            ->where(['actor_id' => $actorId, 'actor_role' => $role])
+            ->orderBy(['id' => SORT_DESC])
+            ->all();
+
+        return ['subscriptions' => $subs];
+    }
+
+    // POST /v1/subscriptions { "category_id": 1 }
+    public function actionCreate()
+    {
+        $role = $this->currentRole();
+        $actorId = $this->currentId();
+
+        $body = Yii::$app->request->bodyParams;
+        $categoryId = (int)($body['category_id'] ?? 0);
+
+        if ($categoryId <= 0) {
+            throw new BadRequestHttpException('category_id is required.');
+        }
+
+        // prevent duplicates
+        $exists = CategorySubscription::find()
+            ->where([
+                'actor_id' => $actorId,
+                'actor_role' => $role,
+                'category_id' => $categoryId,
+            ])
+            ->one();
+
+        if ($exists) {
+            return ['subscription' => $exists];
+        }
+
+        $sub = new CategorySubscription();
+        $sub->actor_id = $actorId;
+        $sub->actor_role = $role;
+        $sub->category_id = $categoryId;
+        $sub->created_at = time();
+
+        if (!$sub->save()) {
+            return ['message' => 'Validation failed', 'errors' => $sub->getErrors()];
+        }
+
+        return ['subscription' => $sub];
+    }
+
+    // DELETE /v1/subscriptions/{id}
+    public function actionDelete($id)
+    {
+        $role = $this->currentRole();
+        $actorId = $this->currentId();
+
+        $sub = CategorySubscription::findOne((int)$id);
+        if (!$sub) {
+            throw new NotFoundHttpException('Subscription not found.');
+        }
+
+        if ((int)$sub->actor_id !== $actorId || (string)$sub->actor_role !== $role) {
+            throw new ForbiddenHttpException('Forbidden.');
+        }
+
+        $sub->delete();
+
+        return ['message' => 'Deleted'];
+    }
+}
