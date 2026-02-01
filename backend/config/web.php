@@ -14,15 +14,13 @@ $config = [
         '@npm'   => '@vendor/npm-asset',
     ],
 
-    //  API Versioning (v1)
     'modules' => [
         'v1' => [
             'class' => \app\modules\v1\Module::class,
         ],
     ],
 
-    //  CORS (FIXED for Flutter Web)
-    // Flutter web runs from http://localhost:<randomPort>
+
 'as cors' => [
     'class' => \yii\filters\Cors::class,
     'cors' => [
@@ -34,7 +32,7 @@ $config = [
     ],
 ],
     'components' => [
-        // Parse JSON
+ 
         'request' => [
             'cookieValidationKey' => 'oXfPHProvgQiUo-mUmovZF0lZ_TL3sV_',
             'parsers' => [
@@ -42,7 +40,6 @@ $config = [
             ],
         ],
 
-        // Always return JSON
         'response' => [
             'format' => yii\web\Response::FORMAT_JSON,
         ],
@@ -51,14 +48,13 @@ $config = [
             'class' => 'yii\caching\FileCache',
         ],
 
-        // API user (no sessions)
+
         'user' => [
             'identityClass' => app\models\User::class,
             'enableSession' => false,
             'loginUrl' => null,
         ],
 
-        // keep jwt component if used elsewhere
         'jwt' => [
             'class' => \sizeg\jwt\Jwt::class,
             'key' => $params['jwtSecret'],
@@ -80,15 +76,14 @@ $config = [
 
         'db' => $db,
 
-        // Routes
+       
         'urlManager' => [
             'enablePrettyUrl' => true,
             'showScriptName' => false,
             'rules' => [
-                // Handle preflight OPTIONS so browser never 404s
+    
                 'OPTIONS <route:.+>' => 'site/options',
 
-                // Default REST (basic CRUD)
                 [
                     'class' => 'yii\rest\UrlRule',
                     'controller' => [
@@ -98,7 +93,7 @@ $config = [
                     ],
                 ],
 
-                // Requests custom routes
+              
                 [
                     'class' => 'yii\rest\UrlRule',
                     'controller' => ['v1/requests'],
@@ -116,7 +111,7 @@ $config = [
         'GET requests' => 'requests',
     ],
 ],
-                // Quotations custom routes
+ 
                 [
                     'class' => 'yii\rest\UrlRule',
                     'controller' => ['v1/quotations'],
@@ -130,7 +125,7 @@ $config = [
                     ],
                 ],
 
-                // Notifications custom routes (THIS FIXES /read)
+         
                 [
                     'class' => 'yii\rest\UrlRule',
                     'controller' => ['v1/notifications'],

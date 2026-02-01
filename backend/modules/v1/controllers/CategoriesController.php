@@ -24,7 +24,6 @@ class CategoriesController extends Controller
         ];
     }
 
-    // GET /v1/categories
     public function actionIndex()
     {
         $items = Category::find()

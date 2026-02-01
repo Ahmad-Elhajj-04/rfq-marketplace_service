@@ -28,8 +28,6 @@ class SubscriptionsController extends Controller
             'delete' => ['DELETE'],
         ];
     }
-
-    // GET /v1/subscriptions
     public function actionIndex()
     {
         $actorId = (int)Yii::$app->user->id;
@@ -42,7 +40,7 @@ class SubscriptionsController extends Controller
         return ['subscriptions' => $items];
     }
 
-    // POST /v1/subscriptions  { "category_id": 1 }
+
     public function actionCreate()
     {
         $actor = Yii::$app->user->identity;
@@ -53,7 +51,6 @@ class SubscriptionsController extends Controller
             throw new BadRequestHttpException('category_id is required.');
         }
 
-        // prevent duplicates
         $exists = CategorySubscription::find()
             ->where(['actor_id' => (int)$actor->id, 'category_id' => $categoryId])
             ->exists();
@@ -75,7 +72,6 @@ class SubscriptionsController extends Controller
         return ['subscription' => $sub];
     }
 
-    // DELETE /v1/subscriptions/{id}
     public function actionDelete($id)
     {
         $actorId = (int)Yii::$app->user->id;

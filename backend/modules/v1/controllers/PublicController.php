@@ -23,7 +23,7 @@ class PublicController extends Controller
         ];
     }
 
-    // GET /v1/public/requests?category_id=1
+
     public function actionRequests()
     {
         $now = time();

@@ -44,7 +44,6 @@ class SubscriptionsController extends Controller
         return (int)Yii::$app->user->id;
     }
 
-    // GET /v1/subscriptions
     public function actionIndex()
     {
         $role = $this->currentRole();
@@ -58,7 +57,6 @@ class SubscriptionsController extends Controller
         return ['subscriptions' => $subs];
     }
 
-    // POST /v1/subscriptions { "category_id": 1 }
     public function actionCreate()
     {
         $role = $this->currentRole();
@@ -71,7 +69,7 @@ class SubscriptionsController extends Controller
             throw new BadRequestHttpException('category_id is required.');
         }
 
-        // prevent duplicates
+    
         $exists = CategorySubscription::find()
             ->where([
                 'actor_id' => $actorId,
@@ -97,7 +95,6 @@ class SubscriptionsController extends Controller
         return ['subscription' => $sub];
     }
 
-    // DELETE /v1/subscriptions/{id}
     public function actionDelete($id)
     {
         $role = $this->currentRole();
